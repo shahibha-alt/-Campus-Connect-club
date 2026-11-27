@@ -183,7 +183,7 @@ def get_club_by_id(club_id: int):
     }
 # E5 - UPDATE CLUB
 
-@app.put("/clubs/{club_id}")
+@app.patch("/clubs/{club_id}")
 def update_club(club_id: int, data: ClubUpdateRequest):
 
     result = function.update_club(
