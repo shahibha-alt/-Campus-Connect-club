@@ -377,3 +377,47 @@ def get_clubs():
     session.close()
     return response
 
+
+# E4 - GET CLUB BY ID
+
+def get_club_by_id(club_id):
+    session = Session(engine)
+
+    club = session.get(Clubs, club_id)
+
+    if club is None:
+        session.close()
+        return None
+
+    response = club_to_dict(club)
+
+    session.close()
+    return response
+
+# E5 - UPDATE CLUB
+
+
+def update_club(club_id, coordinator_id, name=None, description=None, category=None):
+    session = Session(engine)
+
+    club = session.get(Clubs, club_id)
+
+    if club is None or club.coordinator_id != coordinator_id:
+        session.close()
+        return None
+
+    if name is not None:
+        club.name = name
+
+    if description is not None:
+        club.description = description
+
+    if category is not None:
+        club.category = category
+
+    session.commit()
+
+    response = club_to_dict(club)
+
+    session.close()
+    return response
