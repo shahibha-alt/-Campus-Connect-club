@@ -201,6 +201,162 @@ def register_user(name, email, password):
     session.close()
     return response
 
+# TOKEN CREATION
+
+def create_token(user_id, role, email, token_type):
+    if token_type == "access":
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    else:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+    payload = {
+        "user_id": user_id,
+        "role": role,
+        "email": email,
+        "token_type": token_type,
+        "exp": expires_at
+    }
+
+    token = jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+    return token
+
+
+# A2 - LOGIN
+
+
+def login_user(email, password):
+    session = Session(engine)
+
+    user = session.query(Users).filter_by(email=email).first()
+
+    if user is None:
+        session.close()
+        return False
+
+    if verify_password(password, user.password) is False:
+        session.close()
+        return False
+
+    access_token = create_token(
+        user_id=user.id,
+        role=user.role,
+        email=user.email,
+        token_type="access"
+    )
+
+    refresh_token = create_token(
+        user_id=user.id,
+        role=user.role,
+        email=user.email,
+        token_type="refresh"
+    )
+
+    session.close()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+# A3 - REFRESH ACCESS TOKEN
+
+def refresh_access_token(refresh_token):
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+    except jwt.InvalidTokenError:
+        return False
+
+    if payload.get("token_type") != "refresh":
+        return False
+
+    session = Session(engine)
+
+    user = session.get(Users, payload.get("user_id"))
+
+    if user is None:
+        session.close()
+        return False
+
+    access_token = create_token(
+        user_id=user.id,
+        role=user.role,
+        email=user.email,
+        token_type="access"
+    )
+
+    session.close()
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+# E1 - CREATE COORDINATOR
+
+
+def create_coordinator(name, email, password):
+    session = Session(engine)
+
+    existing_user = session.query(Users).filter_by(email=email).first()
+
+    if existing_user is not None:
+        session.close()
+        return False
+
+    hashed_password = ph.hash(password)
+
+    new_user = Users(
+        name=name,
+        email=email,
+        password=hashed_password,
+        role="coordinator"
+    )
+
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    response = user_to_dict(new_user)
+
+    session.close()
+    return response
 
 
 
+# E2 - CREATE CLUB
+
+
+def create_club(name, description, category, coordinator_id):
+    session = Session(engine)
+
+    coordinator = session.get(Users, coordinator_id)
+
+    if coordinator is None or coordinator.role != "coordinator":
+        session.close()
+        return False
+
+    new_club = Clubs(
+        name=name,
+        description=description,
+        category=category,
+        coordinator_id=coordinator_id
+    )
+
+    session.add(new_club)
+    session.commit()
+    session.refresh(new_club)
+
+    response = club_to_dict(new_club)
+
+    session.close()
+    return response
