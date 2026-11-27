@@ -360,3 +360,20 @@ def create_club(name, description, category, coordinator_id):
 
     session.close()
     return response
+
+# E3 - GET ALL CLUBS
+
+
+def get_clubs():
+    session = Session(engine)
+
+    clubs = session.query(Clubs).all()
+
+    response = []
+
+    for club in clubs:
+        response.append(club_to_dict(club))
+
+    session.close()
+    return response
+
